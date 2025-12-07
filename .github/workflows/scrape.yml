@@ -2,7 +2,9 @@ name: Odi Takipçisi
 
 on:
   schedule:
-    - cron: '0 */2 * * *' # Her 2 saatte bir çalışır
+    # Dakika | Saat (UTC) | Gün | Ay | Haftanın Günü
+    # UTC 5 (TR 08:00) ile UTC 22 (TR 01:00) arasında her saat başı çalışır.
+    - cron: '0 5-22 * * *'
   workflow_dispatch:
 
 jobs:
@@ -30,4 +32,3 @@ jobs:
           ODI_EMAIL: ${{ secrets.ODI_EMAIL }}
           ODI_PASSWORD: ${{ secrets.ODI_PASSWORD }}
         run: python main.py
-        
