@@ -4,31 +4,41 @@ import time
 from email.mime.text import MIMEText
 from playwright.sync_api import sync_playwright
 
-# GitHub Secrets
+# GitHub Secrets verileri
 EMAIL_USER = os.environ.get("MY_EMAIL")
 EMAIL_PASS = os.environ.get("MY_EMAIL_PASSWORD") 
 ODI_EMAIL = os.environ.get("ODI_EMAIL")
 ODI_PASSWORD = os.environ.get("ODI_PASSWORD")
 
+# Alıcı Listesi (Siz + Arkadaşlarınız)
+EXTRA_EMAILS = [
+    "denizdevseli@std.iyte.edu.tr",
+    "ruyaerdogan@std.iyte.edu.tr"
+]
+
 def send_mail(subject, message):
-    recipients = [EMAIL_USER] # Sadece size test maili
+    # Ana alıcı (siz) + Ekstra liste
+    recipients = [EMAIL_USER] + EXTRA_EMAILS
+    
     msg = MIMEText(message)
     msg['Subject'] = subject
     msg['From'] = EMAIL_USER
-    msg['To'] = EMAIL_USER 
+    # Mail başlığında herkesin adresi görünsün diye birleştiriyoruz
+    msg['To'] = ", ".join(recipients)
 
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(EMAIL_USER, EMAIL_PASS)
+            # sendmail fonksiyonuna tüm listeyi veriyoruz
             server.sendmail(EMAIL_USER, recipients, msg.as_string())
-        print(f"Mail gönderildi: {subject}")
+        print(f"Mail başarıyla gönderildi (Toplam {len(recipients)} kişi).")
     except Exception as e:
-        print(f"Mail hatasi: {e}")
+        print(f"Mail gönderme hatası: {e}")
 
 def run():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        # Ekranı çok uzun yapalım
+        # Geniş ve uzun bir ekran açıyoruz
         page = browser.new_page(viewport={'width': 1366, 'height': 2000})
 
         print("Siteye gidiliyor...")
@@ -43,72 +53,79 @@ def run():
             page.wait_for_timeout(5000) 
         except Exception as e:
             print(f"Login hatasi: {e}")
+            # Login olamazsa haber ver (Sistemin bozulduğunu anlamanız için)
+            send_mail("ODI BOT HATASI", f"Giris yapilamadi: {e}")
             browser.close()
             return
 
         print("Öğrenci sayfasına (Sıralı Liste) geçiliyor...")
-        # DÜZELTME 1: Sıralamayı URL'den zorluyoruz (?sort=count)
-        # Böylece yemek varsa en üstte çıkar.
+        # URL PARAMETRESİ İLE SIRALAMA: ?sort=count (Yemek olanlar en üstte)
         page.goto("https://getodi.com/student/?sort=count")
         page.wait_for_timeout(5000)
 
-        # --- SCROLL ---
+        # --- SCROLL (KAYDIRMA) ---
         print("Sayfa taranıyor (Klavye 'End' Tuşu ile)...")
-        # 10 kere basıyoruz, 80-100 restoran garanti gelir.
+        # 10 kere basıyoruz, listeyi tamamen yüklüyoruz.
         for i in range(10): 
             page.keyboard.press("End")
             time.sleep(1.5) 
         
         page.wait_for_timeout(2000)
 
-        # --- TARAMA ---
+        # --- ANALİZ ---
+        print("Restoranlar kontrol ediliyor...")
         cards = page.query_selector_all(".menu-box")
         print(f"Toplam {len(cards)} kutu tarandı.")
 
-        bulunan_izmir_restoranlari = []
-        
-        # Debug için ilk 3 restoranın adını yazdıralım (Doğru okuyor mu?)
-        print("Örnek okunan ilk 3 restoran:")
-        for i, card in enumerate(cards[:3]):
-            print(f" - {card.inner_text().splitlines()[1]}")
+        toplam_yemek_sayisi = 0
+        bulunan_yerler = []
 
         for card in cards:
             raw_text = card.inner_text()
-            # DÜZELTME 2: 'İ' harfi sorununu aşmak için 'zmir' arıyoruz.
-            # Ve tüm metni küçük harfe çeviriyoruz.
             text_lower = raw_text.lower()
             
-            # Hem 'izmir' hem 'zmir' kontrolü (Garanti olsun)
+            # 'zmir' araması (Türkçe karakter sorununa karşı önlem)
             if "zmir" in text_lower:
                 try:
                     count = 0
                     count_element = card.query_selector(".menu-capacity span")
                     if count_element:
                         count = int(count_element.inner_text().strip())
-                    
-                    # İsim temizleme
-                    lines = raw_text.split('\n')
-                    # Genelde 2. satır restoran adıdır
-                    ozet_isim = lines[1] if len(lines) > 1 else "İsimsiz"
-                    
-                    durum = f"RESTORAN: {ozet_isim} | ADET: {count}"
-                    print(f"BULUNDU -> {durum}")
-                    bulunan_izmir_restoranlari.append(durum)
-                    
+                        
+                    # --- KRİTİK KONTROL ---
+                    # Sadece yemek sayısı 1 veya daha fazlaysa işleme al
+                    if count >= 1:
+                        print(f"--> BINGO! Aktif yemek bulundu: {count} adet")
+                        toplam_yemek_sayisi += count
+                        
+                        # Restoran adını al
+                        lines = raw_text.split('\n')
+                        restoran_adi = lines[1] if len(lines) > 1 else "Bilinmiyor"
+                        
+                        bulunan_yerler.append(f"{restoran_adi} ({count} adet)")
+                    else:
+                        # Loglara yaz ama mail atma
+                        # print(f"İzmir restoranı görüldü ama boş: {count}")
+                        pass
+
                 except Exception as e:
                     print(f"Okuma hatası: {e}")
 
-        # --- RAPOR ---
-        mail_icerigi = f"Bot Raporu (Sıralama: Çok->Az):\n\n"
-        mail_icerigi += f"Toplam Taranan Kutu: {len(cards)}\n"
-        
-        if bulunan_izmir_restoranlari:
-            mail_icerigi += f"Bulunan İzmir Restoranları ({len(bulunan_izmir_restoranlari)} adet):\n" 
-            mail_icerigi += "\n".join(bulunan_izmir_restoranlari)
+        # --- SONUÇ VE MAİL ---
+        if toplam_yemek_sayisi >= 1:
+            print(f"SONUÇ: Toplam {toplam_yemek_sayisi} yemek bulundu. Mail gönderiliyor.")
+            
+            detay_mesaji = "\n".join(bulunan_yerler)
+            mail_govdesi = f"Müjde! İzmir'de şu an {toplam_yemek_sayisi} adet askıda yemek var.\n\n"
+            mail_govdesi += f"Bulunan Yerler:\n{detay_mesaji}\n\n"
+            mail_govdesi += "Hemen kapmak için: https://getodi.com/student/"
+            
+            send_mail(
+                f"ALARM: İzmir'de {toplam_yemek_sayisi} Yemek Var!", 
+                mail_govdesi
+            )
         else:
-            mail_icerigi += "Listede hiç İzmir (zmir) kelimesi geçmedi."
-
-        send_mail(f"TEST: {len(bulunan_izmir_restoranlari)} İzmir Bulundu", mail_icerigi)
+            print("SONUÇ: İzmir restoranları tarandı, ancak aktif yemek (>=1) bulunamadı. Mail atılmıyor.")
 
         browser.close()
 
