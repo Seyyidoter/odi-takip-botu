@@ -2,8 +2,9 @@ name: Odi Takipçisi
 
 on:
   schedule:
-    # TR Saatiyle 08:00 - 01:00 arası her saat başı çalışır
-    - cron: '0 5-22 * * *'
+    # Anlamı: 5 ile 22 (UTC) saatleri arasında, her 30 dakikada bir çalış.
+    # TR Saatiyle: Sabah 08:00 - Gece 01:30 arası çalışır.
+    - cron: '*/30 5-22 * * *'
   workflow_dispatch:
 
 jobs:
