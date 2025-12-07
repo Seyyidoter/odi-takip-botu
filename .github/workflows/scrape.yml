@@ -2,8 +2,7 @@ name: Odi Takipçisi
 
 on:
   schedule:
-    # Dakika | Saat (UTC) | Gün | Ay | Haftanın Günü
-    # UTC 5 (TR 08:00) ile UTC 22 (TR 01:00) arasında her saat başı çalışır.
+    # TR Saatiyle 08:00 - 01:00 arası her saat başı çalışır
     - cron: '0 5-22 * * *'
   workflow_dispatch:
 
