@@ -1,0 +1,33 @@
+name: Odi Takipçisi
+
+on:
+  schedule:
+    - cron: '0 */2 * * *' # Her 2 saatte bir çalışır
+  workflow_dispatch:
+
+jobs:
+  check-odi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repoyu Çek
+        uses: actions/checkout@v3
+
+      - name: Python Kur
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Kütüphaneleri Yükle
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps
+
+      - name: Botu Çalıştır
+        env:
+          MY_EMAIL: ${{ secrets.MY_EMAIL }}
+          MY_EMAIL_PASSWORD: ${{ secrets.MY_EMAIL_PASSWORD }}
+          ODI_EMAIL: ${{ secrets.ODI_EMAIL }}
+          ODI_PASSWORD: ${{ secrets.ODI_PASSWORD }}
+        run: python main.py
+        
