@@ -10,32 +10,28 @@ EMAIL_PASS = os.environ.get("MY_EMAIL_PASSWORD")
 ODI_EMAIL = os.environ.get("ODI_EMAIL")
 ODI_PASSWORD = os.environ.get("ODI_PASSWORD")
 
-# Alıcı Listesi
-EXTRA_EMAILS = [
-    "denizdevseli@std.iyte.edu.tr",
-    "ruyaerdogan@std.iyte.edu.tr"
-]
-
+# BU TEST SURUMUDUR: Sadece size mail atar.
 def send_mail(subject, message):
-    recipients = [EMAIL_USER] + EXTRA_EMAILS
+    # Sadece kendi mailiniz
+    recipients = [EMAIL_USER]
+    
     msg = MIMEText(message)
     msg['Subject'] = subject
     msg['From'] = EMAIL_USER
-    msg['To'] = ", ".join(recipients)
+    msg['To'] = EMAIL_USER # Sadece size
 
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(EMAIL_USER, EMAIL_PASS)
             server.sendmail(EMAIL_USER, recipients, msg.as_string())
-        print(f"Mail gönderildi: {subject}")
+        print(f"Test maili gönderildi: {subject}")
     except Exception as e:
         print(f"Mail hatasi: {e}")
 
 def run():
     with sync_playwright() as p:
-        # Browser'ı başlat
         browser = p.chromium.launch(headless=True)
-        # Ekranı geniş tut ki daha çok restoran sığsın
+        # Geniş ekran açıyoruz
         page = browser.new_page(viewport={'width': 1280, 'height': 1080})
 
         print("Siteye gidiliyor...")
@@ -50,8 +46,7 @@ def run():
             page.wait_for_timeout(5000) 
         except Exception as e:
             print(f"Login hatasi: {e}")
-            # Login olamazsa haber ver
-            send_mail("ODI BOT HATASI", f"Giris yapilamadi: {e}")
+            send_mail("ODI TEST HATASI", f"Giriş başarısız: {e}")
             browser.close()
             return
 
@@ -59,61 +54,61 @@ def run():
         page.goto("https://getodi.com/student/")
         page.wait_for_timeout(3000)
 
-        # --- SCROLL (KAYDIRMA) İŞLEMİ ---
-        print("Sayfa aşağı kaydırılıyor (Tüm restoranlar yüklensin)...")
-        # 5 kere aşağı kaydırıp yüklenmesini bekliyoruz
+        # --- SCROLL ---
+        print("Sayfa aşağı kaydırılıyor...")
         for i in range(5): 
             page.mouse.wheel(0, 1000) 
             time.sleep(1) 
         
         page.wait_for_timeout(3000)
 
-        # --- KONTROL ---
-        print("Restoran listesi taranıyor...")
-        
+        # --- TARAMA ---
+        print("Restoranlar analiz ediliyor...")
         cards = page.query_selector_all(".menu-box")
-        print(f"Toplam {len(cards)} adet restoran kutusu bulundu.")
+        print(f"Toplam {len(cards)} kutu bulundu.")
 
-        toplam_yemek_sayisi = 0
-        bulunan_restoranlar = []
+        bulunan_izmir_restoranlari = []
 
         for card in cards:
-            text = card.inner_text().lower()
+            # Tüm metni alıp küçük harfe çevir
+            raw_text = card.inner_text()
+            text_lower = raw_text.lower()
             
-            # 1. Kural: Restoran İZMİR'de mi?
-            if "izmir" in text:
+            if "izmir" in text_lower:
                 try:
-                    # 2. Kural: Yemek sayısını bul
+                    # Sayıyı bul
+                    count = 0
                     count_element = card.query_selector(".menu-capacity span")
                     if count_element:
-                        count_text = count_element.inner_text().strip()
-                        count = int(count_text)
-                        
-                        # --- KRİTİK KONTROL ---
-                        # Sayı 1 veya daha büyükse listeye ekle
-                        if count >= 1:
-                            print(f"--> BINGO! Aktif yemek bulundu: {count} adet")
-                            toplam_yemek_sayisi += count
-                            # Restoran ismini alıp listeye ekleyelim (ilk satır genelde isimdir)
-                            restoran_adi = text.splitlines()[1] if len(text.splitlines()) > 1 else "Bilinmiyor"
-                            bulunan_restoranlar.append(f"{restoran_adi} ({count} adet)")
-                        else:
-                            print(f"    İzmir restoranı var ama yemek sayısı: {count} (Mail atılmayacak)")
+                        count = int(count_element.inner_text().strip())
+                    
+                    # Restoran ismini bulmaya çalış (Genelde satırlardan biri isimdir)
+                    # Basitlik olsun diye ham metnin ilk 2-3 satırını alalım veya temizleyelim
+                    lines = raw_text.split('\n')
+                    # Genelde 2. veya 3. satır restoran adıdır ama karışık olabilir.
+                    # Direkt tüm metni temizleyip özetleyelim:
+                    ozet_isim = lines[1] if len(lines) > 1 else "Bilinmeyen Restoran"
+                    
+                    # Listeye ekle (Sayı 0 olsa bile ekliyoruz!)
+                    durum = f"RESTORAN: {ozet_isim} | ADET: {count}"
+                    print(f"Bulundu -> {durum}")
+                    bulunan_izmir_restoranlari.append(durum)
+                    
                 except Exception as e:
-                    print(f"    Veri okunurken hata: {e}")
+                    print(f"Hata: {e}")
 
-        # --- SONUÇ ---
-        # Eğer toplam yemek sayısı 1 veya daha fazlaysa mail at
-        if toplam_yemek_sayisi >= 1:
-            detay_mesaji = "\n".join(bulunan_restoranlar)
-            print(f"SONUÇ: Toplam {toplam_yemek_sayisi} yemek bulundu. Mail gönderiliyor.")
+        # --- RAPORLAMA ---
+        if bulunan_izmir_restoranlari:
+            print("İzmir restoranları bulundu, rapor maili atılıyor...")
+            mesaj_icerigi = "Botun gördüğü İzmir restoranları şunlar:\n\n" + "\n".join(bulunan_izmir_restoranlari)
             
             send_mail(
-                f"MÜJDE: İzmir'de {toplam_yemek_sayisi} Adet Yemek Yakalandı!", 
-                f"Koş! Aşağıdaki yerlerde yemek var:\n\n{detay_mesaji}\n\nHemen al: https://getodi.com/student/"
+                "TEST SONUCU: İzmir Listesi", 
+                mesaj_icerigi + "\n\nBu mail sadece test amaçlıdır ve sayı 0 olsa bile gönderilmiştir."
             )
         else:
-            print("SONUÇ: İzmir restoranları tarandı, ancak aktif yemek (>=1) bulunamadı.")
+            print("Sayfa tarandı ama 'İzmir' kelimesi geçen hiçbir şey bulunamadı.")
+            send_mail("TEST SONUCU: Boş", "Sayfa tarandı ama İzmir restoranı hiç bulunamadı (Scroll sorunu olabilir).")
 
         browser.close()
 
