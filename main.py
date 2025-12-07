@@ -9,23 +9,21 @@ EMAIL_PASS = os.environ.get("MY_EMAIL_PASSWORD")
 ODI_EMAIL = os.environ.get("ODI_EMAIL")
 ODI_PASSWORD = os.environ.get("ODI_PASSWORD")
 
-# YENİ: İkinci alıcı adresi buraya ekledik
+# İkinci alıcı (Arkadaşınız)
 SECOND_EMAIL = "denizdevseli@std.iyte.edu.tr"
 
 def send_mail(subject, message):
-    # Gönderilecek kişiler listesi (Siz + Arkadaşınız)
+    # Gönderilecekler listesi
     recipients = [EMAIL_USER, SECOND_EMAIL]
     
     msg = MIMEText(message)
     msg['Subject'] = subject
     msg['From'] = EMAIL_USER
-    # Mail başlığında iki kişinin de görünmesi için birleştiriyoruz
     msg['To'] = ", ".join(recipients)
 
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(EMAIL_USER, EMAIL_PASS)
-            # sendmail fonksiyonuna listeyi veriyoruz, ikinize de atıyor
             server.sendmail(EMAIL_USER, recipients, msg.as_string())
         print("Mail gönderildi (İki kişiye de): " + subject)
     except Exception as e:
@@ -49,6 +47,7 @@ def run():
             
         except Exception as e:
             print(f"Login hatasi: {e}")
+            # Hata olursa mail atsin ki sistemin bozuldugunu anlayin
             send_mail("ODI BOT HATASI", f"Giris yapilamadi. Hata: {e}")
             browser.close()
             return
@@ -59,7 +58,7 @@ def run():
 
         content = page.content().lower()
 
-        # --- KONTROL (İZMİR) ---
+        # --- KONTROL (Sadece VARSA mail at) ---
         if "izmir" in content:
             print("İzmir bulundu!")
             send_mail(
@@ -67,12 +66,9 @@ def run():
                 "GetOdi sayfasında İzmir restoranı tespit edildi. Hemen bak: https://getodi.com/student/"
             )
         else:
-            print("İzmir henüz yok.")
-            # Yoksa da haber veriyoruz
-            send_mail(
-                "Durum Raporu: İzmir Yok", 
-                "Site kontrol edildi, şu an İzmir görünmüyor."
-            )
+            # Buradaki send_mail kaldırıldı.
+            # Sadece loglara yazacak, mail atmayacak.
+            print("İzmir henüz yok. Mail atılmıyor.")
 
         browser.close()
 
