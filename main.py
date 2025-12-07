@@ -9,9 +9,10 @@ EMAIL_PASS = os.environ.get("MY_EMAIL_PASSWORD")
 ODI_EMAIL = os.environ.get("ODI_EMAIL")
 ODI_PASSWORD = os.environ.get("ODI_PASSWORD")
 
-def send_mail(message):
+# Guncelleme: Konu basligini (subject) disaridan alacak sekilde degistirdik
+def send_mail(subject, message):
     msg = MIMEText(message)
-    msg['Subject'] = 'ODI ALARM: Izmir Restorani Bulundu!'
+    msg['Subject'] = subject
     msg['From'] = EMAIL_USER
     msg['To'] = EMAIL_USER 
 
@@ -29,18 +30,25 @@ def run():
         page = browser.new_page()
 
         print("Siteye gidiliyor...")
-        page.goto("https://getodi.com/login") 
+        page.goto("https://getodi.com/sign-in/") 
         
         # --- LOGIN ---
-        # Not: Bu kisimlar sitenin guncel yapisina gore degisebilir.
-        # Telefondan F12 yapamayacagimiz icin standart isimleri deniyoruz.
         try:
-            page.fill('input[name="email"]', ODI_EMAIL) 
+            print("Login formlari dolduruluyor...")
+            page.fill('input[name="username"]', ODI_EMAIL) 
             page.fill('input[name="password"]', ODI_PASSWORD)
-            page.click('button[type="submit"]')
+            
+            print("Butona tiklaniyor...")
+            page.click('.btn-sign-01')
+            
             page.wait_for_timeout(5000) 
+            
         except Exception as e:
-            print(f"Login hatasi (selector yanlis olabilir): {e}")
+            print(f"Login hatasi: {e}")
+            # Hata alirsa da mail atsin ki bozuldugunu anlayin
+            send_mail("ODI HATA", f"Giris yaparken hata olustu: {e}")
+            browser.close()
+            return
 
         print("Ogrenci sayfasina geciliyor...")
         page.goto("https://getodi.com/student/")
@@ -48,12 +56,20 @@ def run():
 
         content = page.content().lower()
 
-        # Izmir kontrolu
+        # --- KONTROL MEKANIZMASI ---
         if "izmir" in content:
             print("Izmir bulundu!")
-            send_mail("Mujde! GetOdi sayfasinda Izmir ile ilgili icerik tespit edildi: https://getodi.com/student/")
+            send_mail(
+                "MÜJDE: İzmir Restoranı Var!", 
+                "GetOdi sayfasında İzmir ile ilgili içerik tespit edildi. Hemen kontrol et: https://getodi.com/student/"
+            )
         else:
             print("Izmir henuz yok.")
+            # BURASI YENI EKLENDI: Yoksa da mail at
+            send_mail(
+                "Durum Raporu: İzmir Yok", 
+                "Site kontrol edildi, şu an İzmir için aktif bir restoran görünmüyor."
+            )
 
         browser.close()
 
