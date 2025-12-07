@@ -34,13 +34,9 @@ def run():
         # --- LOGIN ---
         try:
             print("Login deneniyor...")
-            # Sizin attığınız HTML'e göre username/password alanları doğru
             page.fill('input[name="username"]', ODI_EMAIL) 
             page.fill('input[name="password"]', ODI_PASSWORD)
-            
-            # Buton seçicisi de doğru
             page.click('.btn-sign-01')
-            
             page.wait_for_timeout(5000) 
             
         except Exception as e:
@@ -53,23 +49,22 @@ def run():
         page.goto("https://getodi.com/student/")
         page.wait_for_timeout(5000)
 
-        # Sayfanın tüm içeriğini küçük harfe çevirip alıyoruz
         content = page.content().lower()
 
-        # --- KONTROL (MARDİN) ---
-        # HTML'de "Mardin • Artuklu" yazdığı için "mardin" kelimesini aratmak yeterli.
-        if "mardin" in content:
-            print("Mardin bulundu!")
+        # --- KONTROL (İZMİR) ---
+        if "izmir" in content:
+            print("İzmir bulundu!")
             send_mail(
-                "MÜJDE: Mardin'de Restoran Var!", 
-                "GetOdi sayfasında Mardin ile ilgili bir restoran tespit edildi. Hemen kontrol et: https://getodi.com/student/"
+                "MÜJDE: İzmir Restoranı Yakalandı!", 
+                "GetOdi sayfasında İzmir restoranı tespit edildi. Hemen bak: https://getodi.com/student/"
             )
         else:
-            print("Mardin henüz yok.")
-            # Eğer yoksa da bilgi almak istiyorsanız bu kısmı açık tutun:
+            print("İzmir henüz yok.")
+            # Eğer saat başı "yok" maili gelmesinden sıkılırsanız
+            # aşağıdaki send_mail satırının başına # koyarak kapatabilirsiniz.
             send_mail(
-                "Durum Raporu: Mardin Yok", 
-                "Site kontrol edildi, şu an Mardin için aktif bir restoran görünmüyor."
+                "Durum Raporu: İzmir Yok", 
+                "Site kontrol edildi, şu an İzmir görünmüyor."
             )
 
         browser.close()
