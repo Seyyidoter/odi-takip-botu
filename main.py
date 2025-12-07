@@ -9,17 +9,25 @@ EMAIL_PASS = os.environ.get("MY_EMAIL_PASSWORD")
 ODI_EMAIL = os.environ.get("ODI_EMAIL")
 ODI_PASSWORD = os.environ.get("ODI_PASSWORD")
 
+# YENİ: İkinci alıcı adresi buraya ekledik
+SECOND_EMAIL = "denizdevseli@std.iyte.edu.tr"
+
 def send_mail(subject, message):
+    # Gönderilecek kişiler listesi (Siz + Arkadaşınız)
+    recipients = [EMAIL_USER, SECOND_EMAIL]
+    
     msg = MIMEText(message)
     msg['Subject'] = subject
     msg['From'] = EMAIL_USER
-    msg['To'] = EMAIL_USER 
+    # Mail başlığında iki kişinin de görünmesi için birleştiriyoruz
+    msg['To'] = ", ".join(recipients)
 
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(EMAIL_USER, EMAIL_PASS)
-            server.sendmail(EMAIL_USER, EMAIL_USER, msg.as_string())
-        print("Mail gönderildi: " + subject)
+            # sendmail fonksiyonuna listeyi veriyoruz, ikinize de atıyor
+            server.sendmail(EMAIL_USER, recipients, msg.as_string())
+        print("Mail gönderildi (İki kişiye de): " + subject)
     except Exception as e:
         print(f"Mail hatasi: {e}")
 
@@ -60,8 +68,7 @@ def run():
             )
         else:
             print("İzmir henüz yok.")
-            # Eğer saat başı "yok" maili gelmesinden sıkılırsanız
-            # aşağıdaki send_mail satırının başına # koyarak kapatabilirsiniz.
+            # Yoksa da haber veriyoruz
             send_mail(
                 "Durum Raporu: İzmir Yok", 
                 "Site kontrol edildi, şu an İzmir görünmüyor."
