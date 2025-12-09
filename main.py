@@ -16,20 +16,21 @@ EXTRA_EMAILS = [
     "ruyaerdogan@std.iyte.edu.tr"
 ]
 
-def send_mail(subject, message):
+def send_mail(subject, message_html):
     # Ana alıcı (siz) + Ekstra liste
     recipients = [EMAIL_USER] + EXTRA_EMAILS
     
-    msg = MIMEText(message)
+    # --- DEĞİŞİKLİK BURADA ---
+    # İkinci parametre olarak 'html' ekledik. Artık HTML kodlarını anlar.
+    msg = MIMEText(message_html, 'html')
+    
     msg['Subject'] = subject
     msg['From'] = EMAIL_USER
-    # Mail başlığında herkesin adresi görünsün diye birleştiriyoruz
     msg['To'] = ", ".join(recipients)
 
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(EMAIL_USER, EMAIL_PASS)
-            # sendmail fonksiyonuna tüm listeyi veriyoruz
             server.sendmail(EMAIL_USER, recipients, msg.as_string())
         print(f"Mail başarıyla gönderildi (Toplam {len(recipients)} kişi).")
     except Exception as e:
@@ -38,7 +39,6 @@ def send_mail(subject, message):
 def run():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        # Geniş ve uzun bir ekran açıyoruz
         page = browser.new_page(viewport={'width': 1366, 'height': 2000})
 
         print("Siteye gidiliyor...")
@@ -53,19 +53,16 @@ def run():
             page.wait_for_timeout(5000) 
         except Exception as e:
             print(f"Login hatasi: {e}")
-            # Login olamazsa haber ver (Sistemin bozulduğunu anlamanız için)
             send_mail("ODI BOT HATASI", f"Giris yapilamadi: {e}")
             browser.close()
             return
 
         print("Öğrenci sayfasına (Sıralı Liste) geçiliyor...")
-        # URL PARAMETRESİ İLE SIRALAMA: ?sort=count (Yemek olanlar en üstte)
         page.goto("https://getodi.com/student/?sort=count")
         page.wait_for_timeout(5000)
 
         # --- SCROLL (KAYDIRMA) ---
         print("Sayfa taranıyor (Klavye 'End' Tuşu ile)...")
-        # 10 kere basıyoruz, listeyi tamamen yüklüyoruz.
         for i in range(10): 
             page.keyboard.press("End")
             time.sleep(1.5) 
@@ -78,13 +75,12 @@ def run():
         print(f"Toplam {len(cards)} kutu tarandı.")
 
         toplam_yemek_sayisi = 0
-        bulunan_yerler = []
+        bulunan_yerler_html = "" # Restoranları HTML listesi olarak biriktireceğiz
 
         for card in cards:
             raw_text = card.inner_text()
             text_lower = raw_text.lower()
             
-            # 'zmir' araması (Türkçe karakter sorununa karşı önlem)
             if "zmir" in text_lower:
                 try:
                     count = 0
@@ -92,20 +88,16 @@ def run():
                     if count_element:
                         count = int(count_element.inner_text().strip())
                         
-                    # --- KRİTİK KONTROL ---
-                    # Sadece yemek sayısı 1 veya daha fazlaysa işleme al
                     if count >= 1:
                         print(f"--> BINGO! Aktif yemek bulundu: {count} adet")
                         toplam_yemek_sayisi += count
                         
-                        # Restoran adını al
                         lines = raw_text.split('\n')
                         restoran_adi = lines[1] if len(lines) > 1 else "Bilinmiyor"
                         
-                        bulunan_yerler.append(f"{restoran_adi} ({count} adet)")
+                        # HTML Liste maddesi ekliyoruz (<li>)
+                        bulunan_yerler_html += f"<li><b>{restoran_adi}</b>: {count} adet</li>"
                     else:
-                        # Loglara yaz ama mail atma
-                        # print(f"İzmir restoranı görüldü ama boş: {count}")
                         pass
 
                 except Exception as e:
@@ -115,13 +107,29 @@ def run():
         if toplam_yemek_sayisi >= 1:
             print(f"SONUÇ: Toplam {toplam_yemek_sayisi} yemek bulundu. Mail gönderiliyor.")
             
-            detay_mesaji = "\n".join(bulunan_yerler)
-            mail_govdesi = f"İzmir'de şu an {toplam_yemek_sayisi} adet yemek var.\n\n"
-            mail_govdesi += f"Bulunan Yerler:\n{detay_mesaji}\n\n"
-            mail_govdesi += "Hemen kapmak için: https://getodi.com/student/"
+            # --- HTML MAİL FORMATI ---
+            mail_govdesi = f"""
+            <html>
+              <body style="font-family: Arial, sans-serif;">
+                <h2 style="color: #2e7d32;">İzmir'de {toplam_yemek_sayisi} adet yemek var.</h2>
+                <p><b>Bulunan Restoranlar:</b></p>
+                <ul>
+                  {bulunan_yerler_html}
+                </ul>
+                <br>
+                <p style="font-size: 16px;">
+                    Hemen kapmak için aşağıdaki linke tıkla:<br>
+                    <a href="https://getodi.com/student/" style="background-color: #1976d2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">
+                        👉 Odi'ye Git (Tıkla)
+                    </a>
+                </p>
+                <p style="font-size: 12px; color: grey;">Bu mail otomatik gönderilmiştir.</p>
+              </body>
+            </html>
+            """
             
             send_mail(
-                f"İzmir'de {toplam_yemek_sayisi} Yemek Var!", 
+                f"ALARM: İzmir'de {toplam_yemek_sayisi} Yemek Var!", 
                 mail_govdesi
             )
         else:
