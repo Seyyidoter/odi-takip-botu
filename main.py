@@ -129,7 +129,7 @@ def run():
             """
             
             send_mail(
-                f"ALARM: İzmir'de {toplam_yemek_sayisi} Yemek Var!", 
+                f"İzmir'de {toplam_yemek_sayisi} Yemek Var!", 
                 mail_govdesi
             )
         else:
