@@ -10,18 +10,16 @@ EMAIL_PASS = os.environ.get("MY_EMAIL_PASSWORD")
 ODI_EMAIL = os.environ.get("ODI_EMAIL")
 ODI_PASSWORD = os.environ.get("ODI_PASSWORD")
 
-# Alıcı Listesi (Siz + Arkadaşlarınız)
+# Alıcı Listesi (Ben + Arkadaşlar)
 EXTRA_EMAILS = [
     "denizdevseli@std.iyte.edu.tr",
     "ruyaerdogan@std.iyte.edu.tr"
 ]
 
 def send_mail(subject, message_html):
-    # Ana alıcı (siz) + Ekstra liste
+    # Ana alıcı (ben) + Ekstra liste
     recipients = [EMAIL_USER] + EXTRA_EMAILS
     
-    # --- DEĞİŞİKLİK BURADA ---
-    # İkinci parametre olarak 'html' ekledik. Artık HTML kodlarını anlar.
     msg = MIMEText(message_html, 'html')
     
     msg['Subject'] = subject
@@ -44,7 +42,7 @@ def run():
         print("Siteye gidiliyor...")
         page.goto("https://getodi.com/sign-in/") 
         
-        # --- LOGIN ---
+        # --- Login ---
         try:
             print("Login yapılıyor...")
             page.fill('input[name="username"]', ODI_EMAIL) 
@@ -61,7 +59,7 @@ def run():
         page.goto("https://getodi.com/student/?sort=count")
         page.wait_for_timeout(5000)
 
-        # --- SCROLL (KAYDIRMA) ---
+        # --- Scroll ---
         print("Sayfa taranıyor (Klavye 'End' Tuşu ile)...")
         for i in range(10): 
             page.keyboard.press("End")
@@ -69,7 +67,7 @@ def run():
         
         page.wait_for_timeout(2000)
 
-        # --- ANALİZ ---
+        # --- Analiz ---
         print("Restoranlar kontrol ediliyor...")
         cards = page.query_selector_all(".menu-box")
         print(f"Toplam {len(cards)} kutu tarandı.")
@@ -103,11 +101,11 @@ def run():
                 except Exception as e:
                     print(f"Okuma hatası: {e}")
 
-        # --- SONUÇ VE MAİL ---
+        # --- Sonuç ve Mail ---
         if toplam_yemek_sayisi >= 1:
             print(f"SONUÇ: Toplam {toplam_yemek_sayisi} yemek bulundu. Mail gönderiliyor.")
             
-            # --- HTML MAİL FORMATI ---
+            # --- HTML Mail Formatı ---
             mail_govdesi = f"""
             <html>
               <body style="font-family: Arial, sans-serif;">
