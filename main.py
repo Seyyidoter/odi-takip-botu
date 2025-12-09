@@ -116,12 +116,12 @@ def run():
             print(f"SONUÇ: Toplam {toplam_yemek_sayisi} yemek bulundu. Mail gönderiliyor.")
             
             detay_mesaji = "\n".join(bulunan_yerler)
-            mail_govdesi = f"Müjde! İzmir'de şu an {toplam_yemek_sayisi} adet askıda yemek var.\n\n"
+            mail_govdesi = f"İzmir'de şu an {toplam_yemek_sayisi} adet yemek var.\n\n"
             mail_govdesi += f"Bulunan Yerler:\n{detay_mesaji}\n\n"
             mail_govdesi += "Hemen kapmak için: https://getodi.com/student/"
             
             send_mail(
-                f"ALARM: İzmir'de {toplam_yemek_sayisi} Yemek Var!", 
+                f"İzmir'de {toplam_yemek_sayisi} Yemek Var!", 
                 mail_govdesi
             )
         else:
