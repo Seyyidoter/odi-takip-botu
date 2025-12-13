@@ -4,7 +4,7 @@ on:
   schedule:
     # Anlamı: 5 ile 22 (UTC) saatleri arasında, her 30 dakikada bir çalış.
     # TR Saatiyle: Sabah 08:00 - Gece 01:30 arası çalışır.
-    - cron: '*/30 5-22 * * *'
+    - cron: '0 5-22 * * *'
   workflow_dispatch:
 
 jobs:
